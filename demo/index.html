@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>LOB Demo UI (not production)</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --panel: #161b22;
+      --stroke: #30363d;
+      --text: #e6edf3;
+      --muted: #8b949e;
+      --bid: #3fb950;
+      --ask: #f85149;
+      --accent: #58a6ff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      padding: 1rem 1.25rem 0.75rem;
+      border-bottom: 1px solid var(--stroke);
+    }
+    header h1 { font-size: 1.05rem; font-weight: 600; margin: 0 0 0.35rem; }
+    .banner {
+      display: inline-block;
+      font-size: 0.75rem;
+      letter-spacing: 0.02em;
+      color: #1f2328;
+      background: #d4a72c;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+    header p { margin: 0.5rem 0 0; color: var(--muted); font-size: 0.85rem; max-width: 52rem; line-height: 1.45; }
+    main {
+      display: grid;
+      grid-template-columns: 280px 1fr 280px;
+      gap: 1rem;
+      padding: 1rem;
+    }
+    @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--stroke);
+      border-radius: 8px;
+      padding: 0.9rem;
+    }
+    .card h2 { margin: 0 0 0.75rem; font-size: 0.8rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    label { display: block; font-size: 0.75rem; color: var(--muted); margin: 0.45rem 0 0.2rem; }
+    input, select, button {
+      width: 100%;
+      padding: 0.45rem 0.5rem;
+      border-radius: 6px;
+      border: 1px solid var(--stroke);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+    }
+    button { cursor: pointer; margin-top: 0.55rem; background: #21262d; }
+    button.primary { background: #1f6feb; border-color: #1f6feb; }
+    button.danger { background: #6e2d2d; }
+    .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; font-variant-numeric: tabular-nums; }
+    .stat { background: var(--bg); border-radius: 6px; padding: 0.5rem; }
+    .stat b { display: block; font-size: 1rem; }
+    .stat span { font-size: 0.7rem; color: var(--muted); }
+    .ladder { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.8rem; }
+    .row { display: grid; grid-template-columns: 64px 1fr 48px; align-items: center; gap: 0.4rem; margin: 0.18rem 0; }
+    .bar { height: 14px; border-radius: 2px; min-width: 2px; }
+    .bar.bid { background: var(--bid); }
+    .bar.ask { background: var(--ask); }
+    .px { text-align: right; }
+    .spread { text-align: center; color: var(--muted); padding: 0.4rem 0; font-size: 0.75rem; }
+    .fills { font-family: ui-monospace, Menlo, monospace; font-size: 0.75rem; max-height: 280px; overflow: auto; }
+    .fills div { padding: 0.25rem 0; border-bottom: 1px solid var(--stroke); }
+    .src { font-size: 0.75rem; color: var(--accent); margin-bottom: 0.5rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="banner">DEMO UI — not production</span>
+    <h1>Limit order book viewer</h1>
+    <p>
+      This page visualizes a book. Open the file directly to use an in-browser
+      <strong>JavaScript toy matcher</strong>. Run <code>python3 demo/server.py</code>
+      after building <code>lob_demo</code> to drive the <strong>real C++ OrderBook</strong>.
+      Neither path is the UDP publisher or the lock-free ingress path.
+    </p>
+  </header>
+  <main>
+    <section class="card">
+      <h2>Submit</h2>
+      <div class="src" id="backend-label">backend: JS mock</div>
+      <label>Side</label>
+      <select id="side"><option>BUY</option><option>SELL</option></select>
+      <label>Type</label>
+      <select id="typ">
+        <option value="limit">Limit</option>
+        <option value="market">Market</option>
+        <option value="cancel">Cancel</option>
+      </select>
+      <label>Price (ticks)</label>
+      <input id="px" type="number" value="10000" />
+      <label>Qty</label>
+      <input id="qty" type="number" value="10" />
+      <label>Cancel id</label>
+      <input id="cid" type="number" value="0" />
+      <button class="primary" id="go">Submit</button>
+      <button id="seed">Seed a small ladder</button>
+      <button class="danger" id="reset">Reset book</button>
+    </section>
+    <section class="card">
+      <h2>Ladder</h2>
+      <div class="ladder" id="ladder"></div>
+    </section>
+    <section class="card">
+      <h2>Readout</h2>
+      <div class="stats">
+        <div class="stat"><span>last latency</span><b id="lat">—</b></div>
+        <div class="stat"><span>last order id</span><b id="lid">—</b></div>
+        <div class="stat"><span>best bid</span><b id="bb">—</b></div>
+        <div class="stat"><span>best ask</span><b id="ba">—</b></div>
+      </div>
+      <h2 style="margin-top:1rem">Last fills</h2>
+      <div class="fills" id="fills"><div>none yet</div></div>
+    </section>
+  </main>
+  <script>
+    const USE_CPP = location.protocol.startsWith("http");
+
+    /* ---- JS toy book (file://). FIFO per price, not the C++ engine. ---- */
+    let nextId = 1;
+    const bids = new Map(); // price -> [{id, qty}]
+    const asks = new Map();
+    const fillLog = [];
+
+    function levels(sideMap, desc) {
+      const keys = [...sideMap.keys()].sort((a, b) => desc ? b - a : a - b);
+      return keys.map(px => {
+        const os = sideMap.get(px) || [];
+        return { price: px, qty: os.reduce((s, o) => s + o.qty, 0), n: os.length, os };
+      }).filter(l => l.qty > 0);
+    }
+
+    function addLimit(side, px, qty) {
+      const id = nextId++;
+      const book = side === "BUY" ? bids : asks;
+      if (!book.has(px)) book.set(px, []);
+      book.get(px).push({ id, qty });
+      return { id, fills: [] };
+    }
+
+    function market(side, qty) {
+      const fills = [];
+      let left = qty;
+      const opp = side === "BUY" ? asks : bids;
+      const desc = side !== "BUY";
+      while (left > 0) {
+        const lvls = levels(opp, desc);
+        if (!lvls.length) break;
+        const lvl = lvls[0];
+        const os = opp.get(lvl.price);
+        const o = os[0];
+        const take = Math.min(left, o.qty);
+        o.qty -= take;
+        left -= take;
+        fills.push({ id: o.id, price: lvl.price, qty: take });
+        if (o.qty === 0) os.shift();
+        if (!os.length) opp.delete(lvl.price);
+      }
+      return { id: 0, fills };
+    }
+
+    function cancel(id) {
+      for (const book of [bids, asks]) {
+        for (const [px, os] of book) {
+          const i = os.findIndex(o => o.id === id);
+          if (i >= 0) {
+            os.splice(i, 1);
+            if (!os.length) book.delete(px);
+            return true;
+          }
+        }
+      }
+      return false;
+    }
+
+    function stateFromMock(extra) {
+      const b = levels(bids, true);
+      const a = levels(asks, false);
+      return Object.assign({
+        ok: true,
+        bids: b.map(({ price, qty, n }) => ({ price, qty, n })),
+        asks: a.map(({ price, qty, n }) => ({ price, qty, n })),
+      }, extra);
+    }
+
+    async function send(cmd) {
+      const t0 = performance.now();
+      if (!USE_CPP) {
+        let extra = { fills: [], id: 0, ok: true };
+        if (cmd.op === "seed") {
+          bids.clear(); asks.clear(); nextId = 1;
+          for (let i = 1; i <= 8; i++) addLimit("BUY", 10000 - i, 5 + i);
+          for (let i = 1; i <= 8; i++) addLimit("SELL", 10000 + i, 5 + i);
+        } else if (cmd.op === "reset") {
+          bids.clear(); asks.clear(); nextId = 1; extra.fills = [];
+        } else if (cmd.op === "limit") extra = addLimit(cmd.side, cmd.price, cmd.qty);
+        else if (cmd.op === "market") extra = market(cmd.side, cmd.qty);
+        else if (cmd.op === "cancel") extra = { id: cmd.id, ok: cancel(cmd.id), fills: [] };
+        extra.latency_ns = Math.round((performance.now() - t0) * 1e6);
+        extra.mock = true;
+        return stateFromMock(extra);
+      }
+      const r = await fetch("/api", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(cmd)
+      });
+      return r.json();
+    }
+
+    function render(s) {
+      document.getElementById("backend-label").textContent =
+        s.mock ? "backend: JS toy book (file://)" : "backend: C++ lob_demo";
+      document.getElementById("lat").textContent = s.latency_ns != null ? s.latency_ns + " ns" : "—";
+      document.getElementById("lid").textContent = s.id ? s.id : "—";
+      const bids = s.bids || [];
+      const asks = s.asks || [];
+      document.getElementById("bb").textContent = bids.length ? bids[0].price : "—";
+      document.getElementById("ba").textContent = asks.length ? asks[0].price : "—";
+      const maxq = Math.max(1, ...bids.map(x => x.qty), ...asks.map(x => x.qty));
+      const askRows = [...asks].reverse().map(l =>
+        `<div class="row"><span class="px" style="color:var(--ask)">${l.price}</span>
+         <div class="bar ask" style="width:${Math.max(4, 100 * l.qty / maxq)}%"></div>
+         <span>${l.qty}</span></div>`).join("");
+      const bidRows = bids.map(l =>
+        `<div class="row"><span class="px" style="color:var(--bid)">${l.price}</span>
+         <div class="bar bid" style="width:${Math.max(4, 100 * l.qty / maxq)}%"></div>
+         <span>${l.qty}</span></div>`).join("");
+      document.getElementById("ladder").innerHTML =
+        askRows + `<div class="spread">spread</div>` + bidRows;
+      if (s.fills && s.fills.length) {
+        for (const f of s.fills) fillLog.unshift(f);
+      }
+      document.getElementById("fills").innerHTML = fillLog.length
+        ? fillLog.slice(0, 24).map(f =>
+            `<div>resting ${f.id}  px ${f.price}  qty ${f.qty}</div>`).join("")
+        : "<div>none yet</div>";
+    }
+
+    document.getElementById("go").onclick = async () => {
+      const typ = document.getElementById("typ").value;
+      const side = document.getElementById("side").value;
+      const cmd = { op: typ, side, price: +document.getElementById("px").value,
+                    qty: +document.getElementById("qty").value, id: +document.getElementById("cid").value };
+      render(await send(cmd));
+    };
+    document.getElementById("seed").onclick = async () => render(await send({ op: "seed" }));
+    document.getElementById("reset").onclick = async () => {
+      fillLog.length = 0;
+      render(await send({ op: "reset" }));
+    };
+
+    send({ op: "seed" }).then(render);
+  </script>
+</body>
+</html>

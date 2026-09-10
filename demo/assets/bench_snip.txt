@@ -1,0 +1,39 @@
+Unable to determine clock rate from sysctl: hw.cpufrequency: No such file or directory
+This does not affect benchmark measurements, only the metadata output.
+***WARNING*** Failed to set thread affinity. Estimated CPU frequency may be incorrect.
+2026-09-10T18:41:15+05:30
+Running /Users/atharvagite/Desktop/QuantFin/Cpp OrderBook Simulator/build/lob_bench
+Run on (10 X 24 MHz CPU s)
+CPU Caches:
+  L1 Data 64 KiB
+  L1 Instruction 128 KiB
+  L2 Unified 4096 KiB (x10)
+Load Average: 2.04, 2.00, 2.20
+-- LOG(0): Value passed to --benchmark_min_time should have a suffix. Eg., `30s` for 30-seconds.-- LOG(0): Value passed to --benchmark_min_time should have a suffix. Eg., `30s` for 30-seconds.-- LOG(0): Value passed to --benchmark_min_time should have a suffix. Eg., `30s` for 30-seconds.-- LOG(0): Value passed to --benchmark_min_time should have a suffix. Eg., `30s` for 30-seconds.-- LOG(0): Value passed to --benchmark_min_time should have a suffix. Eg., `30s` for 30-seconds.--------------------------------------------------------------------------------------------------------------------------------------------
+Benchmark                                     Time             CPU   Iterations items_per_second        p50        p90        p99      p99.9
+--------------------------------------------------------------------------------------------------------------------------------------------
+BM_AddLimitLatency/10/0/manual_time        50.2 ns          108 ns      1000000       19.9324M/s         42         83         84        166 add_limit_order/pool
+BM_AddLimitLatency/100/0/manual_time       50.4 ns          108 ns      1385557       19.8321M/s         42         83         84         84 add_limit_order/pool
+BM_CancelLatency/10/0/manual_time          67.0 ns          147 ns       985380       14.9179M/s         83         84        125        166 cancel_order/pool
+BM_MarketLatency/10/0/manual_time          87.0 ns          176 ns       843546       11.4968M/s         83         84        125        208 market_order/pool
+------------------------------------------------------------------------------------------------
+Benchmark                                     Time             CPU   Iterations items_per_second
+------------------------------------------------------------------------------------------------
+BM_SimThroughput/10/0                       180 ns          179 ns       383730       5.57561M/s sim_throughput/pool
+
+Clock: std::chrono::steady_clock  |  overhead p50 = 41 ns (empty now()-now())
+Depth = resting orders per side, 1 order / distinct tick (std::map size == depth).
+market_order times 1-lot at the inside; std::map::begin() is O(1) so this path should stay ~flat vs depth.
+add/cancel hit an interior tick so map find is O(log depth).
+GB ns/op for latency benches is UseManualTime of the same chrono interval as the histogram (restore is untimed).
+
+op                alloc   depth   p50       p90       p99       p99.9     ns/op       events/s      
+----------------------------------------------------------------------------------------------------
+add_limit_order   pool    10      42.0      83.0      84.0      166.0     50.2        -             
+add_limit_order   pool    100     42.0      83.0      84.0      84.0      50.4        -             
+cancel_order      pool    10      83.0      84.0      125.0     166.0     67.0        -             
+market_order      pool    10      83.0      84.0      125.0     208.0     87.0        -             
+sim_throughput    pool    10      0.0       0.0       0.0       0.0       180.1       5575607       
+
+ANOMALY: add_limit_order/pool depth=10 p50=42ns is within 2x clock overhead (41ns); treat as a floor, not engine time.
+ANOMALY: add_limit_order/pool depth=100 p50=42ns is within 2x clock overhead (41ns); treat as a floor, not engine time.

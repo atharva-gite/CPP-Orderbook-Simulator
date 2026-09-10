@@ -149,6 +149,11 @@ target_link_libraries(lob_contention_bench PRIVATE lob Threads::Threads)
 target_compile_features(lob_contention_bench PRIVATE cxx_std_20)
 lob_apply_sanitizers(lob_contention_bench)
 
+add_executable(lob_demo demo/lob_demo.cpp)
+target_link_libraries(lob_demo PRIVATE lob matching)
+target_compile_features(lob_demo PRIVATE cxx_std_20)
+lob_apply_sanitizers(lob_demo)
+
 add_executable(lob_profile bench/profile_pipeline.cpp)
 target_link_libraries(lob_profile PRIVATE lob matching mdnet Threads::Threads)
 target_compile_features(lob_profile PRIVATE cxx_std_20)
