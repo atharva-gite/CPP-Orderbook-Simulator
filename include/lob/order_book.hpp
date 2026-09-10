@@ -2,8 +2,7 @@
 
 #include "lob/order.hpp"
 #include "lob/types.hpp"
-#include <map>
-#include <unordered_map>
+#include <functional>
 #include <optional>
 #include <vector>
 #include <cstdint>
@@ -46,6 +45,12 @@ struct BidCmp {
         return a > b;
     }
 };
+
+} // namespace lob
+
+#include "lob/price_ladder.hpp"
+
+namespace lob {
 
 class OrderBook {
 public:
@@ -109,10 +114,16 @@ private:
     // Returns true if replenished (order stays in book); false => fully done.
     bool try_replenish_iceberg(Order* o, PriceLevel& lvl) noexcept;
 
-    std::map<price_t, PriceLevel, BidCmp> bids_;
-    std::map<price_t, PriceLevel, std::less<price_t>> asks_;
+    Order* find_id(order_id_t id) const noexcept;
+    void put_id(Order* o);
+    void drop_id(order_id_t id) noexcept;
 
-    std::unordered_map<order_id_t, Order*> id_map_;
+    PriceLadder<BidCmp> bids_;
+    PriceLadder<std::less<price_t>> asks_;
+
+    // Dense id table: order_id is monotonic, so a vector beats node-based
+    // unordered_map (sample: tiny_malloc on every emplace).
+    std::vector<Order*> id_slots_;
     size_t next_order_id_ = 1;
     OrderPool pool_;
     std::vector<Order*> pending_stop_storage_;

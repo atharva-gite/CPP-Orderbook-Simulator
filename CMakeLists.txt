@@ -131,10 +131,28 @@ target_link_libraries(lob_concurrent_tests PRIVATE lob Catch2::Catch2WithMain Th
 lob_apply_sanitizers(lob_concurrent_tests)
 add_test(NAME lob_concurrent_tests COMMAND lob_concurrent_tests)
 
+add_library(mdnet STATIC net/md_publisher.cpp net/md_receiver.cpp net/thread_pin.cpp)
+target_include_directories(mdnet PUBLIC
+  ${CMAKE_CURRENT_SOURCE_DIR}/net
+  ${CMAKE_CURRENT_SOURCE_DIR}/include)
+target_link_libraries(mdnet PUBLIC lob Threads::Threads)
+target_compile_features(mdnet PUBLIC cxx_std_20)
+lob_apply_sanitizers(mdnet)
+
+add_executable(lob_md_tests tests/test_md_multicast.cpp)
+target_link_libraries(lob_md_tests PRIVATE mdnet Catch2::Catch2WithMain Threads::Threads)
+lob_apply_sanitizers(lob_md_tests)
+add_test(NAME lob_md_tests COMMAND lob_md_tests)
+
 add_executable(lob_contention_bench bench/bench_contention.cpp)
 target_link_libraries(lob_contention_bench PRIVATE lob Threads::Threads)
 target_compile_features(lob_contention_bench PRIVATE cxx_std_20)
 lob_apply_sanitizers(lob_contention_bench)
+
+add_executable(lob_profile bench/profile_pipeline.cpp)
+target_link_libraries(lob_profile PRIVATE lob matching mdnet Threads::Threads)
+target_compile_features(lob_profile PRIVATE cxx_std_20)
+lob_apply_sanitizers(lob_profile)
 
 # Benchmarks
 if(LOB_ENABLE_BENCH)
