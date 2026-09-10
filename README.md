@@ -83,7 +83,7 @@ cmake --build build-tsan -j
 
 ## Numbers (measured on Apple M4)
 
-Do not quote these as exchange wire times. Details: [`docs/writeup.md`](docs/writeup.md), [`docs/profiling.md`](docs/profiling.md), [`docs/matching_semantics.md`](docs/matching_semantics.md).
+Details: [`docs/writeup.md`](docs/writeup.md), [`docs/profiling.md`](docs/profiling.md), [`docs/matching_semantics.md`](docs/matching_semantics.md).
 
 - Pool vs heap `add_limit_order` ns/op ≈ **2.4×** (depth 10 and 10k).
 - Simulator into book (pool): **5.6M → 2.9M events/s** as depth 10 → 10k.
